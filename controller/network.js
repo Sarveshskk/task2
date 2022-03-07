@@ -1,8 +1,9 @@
 const mongoose = require("mongoose");
+require("dotenv").config();
 
 const dbConnect = (req, res,next) => {
     try {
-        mongoose.connect("mongodb://localhost:27017/users");
+        mongoose.connect(process.env.dbURL);
         console.log("connected to db");
     } catch (error) {
         handleError(error);

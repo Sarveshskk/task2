@@ -2,9 +2,10 @@ const express = require("express");
 const router = express.Router();
 const User = require("../models/users");
 const md5 = require("md5");
-// const jwt = require('jsonwebtoken');
-const Token = require("../models/token");
+const jwt = require('jsonwebtoken');
+// const Token = require("../models/token");
 const Address = require("../models/address");
+require("dotenv").config();
 
 
 exports.register = (req, res) => {
@@ -50,20 +51,22 @@ exports.login = (req, res) => {
         } else {
             if (foundUser) {
                 if (foundUser.password === password) {
-                    const tokenData = md5(new Date())
-                    const token = new Token({
-                        user_id: foundUser._id,
-                        access_token: tokenData,
-                    });
-                    token.save();
-                    // const token = jwt.sign(
-                    //     { id: foundUser._id },
-                    //     process.env.TOKEN_KEY,
-                    //     {
-                    //         expiresIn: 60000,
-                    //     }
-                    // );
-                    res.status(200).send({ token: token });
+                // manually token created
+                // const tokenData = md5(new Date())
+                // const token = new Token({
+                //     user_id: foundUser._id,
+                //     access_token: tokenData,
+                // });
+                // token.save();
+                // JWT token
+                    const token = jwt.sign(
+                        { id: foundUser._id },
+                        process.env.TOKEN_KEY,
+                        {
+                            expiresIn: 60000,
+                        }
+                    );
+                    res.status(200).send({ jwttoken: token });
                 } else {
                     res.status(500).send("User password incorrect.");
                 }
@@ -120,9 +123,7 @@ exports.address = (req, res) => {
             phone_no: req.body.phone_no
         })
         address.save();
-        // console.log(user["_id"]);
-        let user_id = user["_id"];
-        // res.send("user address created");
+        let user_id = user["id"];
         User.findByIdAndUpdate(user_id, { $push: { address: address } }, (err, docs) => {
             if (err) {
                 console.log(err)
@@ -141,15 +142,15 @@ exports.address = (req, res) => {
 }
 
 exports.getData = (req, res) => {
-    let user = req.user;
-    if (user == null) {
+    let user_id = req.params["id"];
+    if (user_id == null) {
         res.status(403)
             .send({
                 message: "Invalid token"
             });
     }
     else {
-        User.find().populate("address").then(user => {
+        User.find({_id:user_id}).populate("address").then(user => {
             res.json(user);
     })
 }
