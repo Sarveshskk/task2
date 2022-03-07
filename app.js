@@ -1,19 +1,9 @@
 require("dotenv").config();
+const dbConnect = require("./controller/network")
 const express = require("express");
-const mongoose = require("mongoose");
-const User = require("./models/users");
 const registerRoute = require("./routes/usersRoute");
 
-try {
-    mongoose.connect("mongodb://localhost:27017/users");
-    console.log("connected to db");
-} catch (error) {
-    handleError(error);
-}
-process.on('unhandledRejection', error => {
-    console.log('unhandledRejection', error.message);
-});
-
+dbConnect();
 const app = express();
 app.use(express.static("public"));
 app.use(express.json());
