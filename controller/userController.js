@@ -5,13 +5,14 @@ const md5 = require("md5");
 const jwt = require('jsonwebtoken');
 // const Token = require("../models/token");
 const Address = require("../models/address");
+const passport = require("passport");
+const LocalStrategy = require('passport-local');
 require("dotenv").config();
 
-
-exports.register = (req, res) => {
+exports.register = async (req, res) => {
     try {
         if (req.body.password == req.body.cnfpassword) {
-            const user = new User({
+            const user = await new User({
                 first_name: req.body.first_name,
                 last_name: req.body.last_name,
                 email: req.body.email,
@@ -26,10 +27,14 @@ exports.register = (req, res) => {
                         });
                     return;
                 } else {
-                    res.status(200)
-                        .send({
-                            message: "User Registered successfully"
-                        });
+                    const token = jwt.sign(
+                        { id: user._id },
+                        process.env.TOKEN_KEY,
+                        {
+                            expiresIn: 60000,
+                        }
+                    );
+                    res.status(200).send({ jwttoken: token });
                 }
             });
         }
@@ -41,59 +46,35 @@ exports.register = (req, res) => {
         console.log('unhandledRejection', error.message);
     });
 };
-
 exports.login = (req, res) => {
-    let username = req.body.username
-    let password = md5(req.body.password)
-    User.findOne({ username: username }, (err, foundUser) => {
-        if (err) {
-            console.log(err);
-        } else {
-            if (foundUser) {
-                if (foundUser.password === password) {
-                // manually token created
-                // const tokenData = md5(new Date())
-                // const token = new Token({
-                //     user_id: foundUser._id,
-                //     access_token: tokenData,
-                // });
-                // token.save();
-                // JWT token
-                    const token = jwt.sign(
-                        { id: foundUser._id },
-                        process.env.TOKEN_KEY,
-                        {
-                            expiresIn: 60000,
-                        }
-                    );
-                    res.status(200).send({ jwttoken: token });
-                } else {
-                    res.status(500).send("User password incorrect.");
-                }
-            } else {
-                res.status(500).send("User not regestered.");
-            }
-        }
-    })
-};
 
-exports.deleteUser = (req, res) => {
-    let user = req.user;
-    if (user == null) {
-        res.status(403)
-            .send({
-                message: "Invalid token"
-            });
+    passport.authenticate('local', { failureRedirect: '/user/login' }),
+        function (req, res) {
+            res.redirect('/user/list/2');
+        }
+}
+
+
+
+exports.deleteUser = async (req, res) => {
+    try {
+        let user = req.user;
+        if (user == null) {
+            res.status(403)
+                .send({
+                    message: "Invalid token"
+                });
+        }
+        else {
+            await User.findOneAndDelete({ _id: user["id"] })
+            res.send("user deleted successfully");
+        }
+    } catch (error) {
+        handleError(error);
     }
-    else {
-        User.findOneAndDelete({ _id: user["id"] }, (err) => {
-            if (err) {
-                console.log(err);
-            } else {
-                res.send("user deleted successfully");
-            }
-        });
-    }
+    process.on('unhandledRejection', error => {
+        console.log('unhandledRejection', error.message);
+    });
 };
 
 exports.pagination = async (req, res) => {
@@ -111,10 +92,10 @@ exports.pagination = async (req, res) => {
         console.log('unhandledRejection', error.message);
     });
 };
-exports.address = (req, res) => {
+exports.address = async (req, res) => {
     try {
         let user = req.user;
-        const address = new Address({
+        const address = await new Address({
             user_id: req.body.user_id,
             address: req.body.address,
             city: req.body.city,
@@ -124,14 +105,8 @@ exports.address = (req, res) => {
         })
         address.save();
         let user_id = user["id"];
-        User.findByIdAndUpdate(user_id, { $push: { address: address } }, (err, docs) => {
-            if (err) {
-                console.log(err)
-            }
-            else {
-                res.send("user address updated")
-            }
-        });
+        await User.findByIdAndUpdate(user_id, { $push: { address: address } })
+        res.send("user address updated")
     }
     catch (error) {
         handleError(error);
@@ -141,17 +116,169 @@ exports.address = (req, res) => {
     });
 }
 
-exports.getData = (req, res) => {
-    let user_id = req.params["id"];
-    if (user_id == null) {
-        res.status(403)
-            .send({
-                message: "Invalid token"
-            });
+exports.getData = async (req, res) => {
+    try {
+        let user_id = req.params["id"];
+        if (user_id == null) {
+            res.status(403)
+                .send({
+                    message: "Invalid token"
+                });
+        }
+        else {
+            await User.find({ _id: user_id }).populate("address").then(user => {
+                res.json(user);
+            })
+        }
     }
-    else {
-        User.find({_id:user_id}).populate("address").then(user => {
-            res.json(user);
-    })
-}
-}
+    catch (error) {
+        handleError(error);
+    }
+    process.on('unhandledRejection', error => {
+        console.log('unhandledRejection', error.message);
+    });
+};
+
+exports.deleteAddress = async (req, res) => {
+    try {
+        let user = req.user;
+        // console.log(user);
+        if (user == null) {
+            res.status(403)
+                .send({
+                    message: "Invalid token"
+                });
+        }
+        else {
+            let foundUser = await User.findOne({ _id: user["id"] })
+            // console.log(foundUser.address);
+            let addressIds = foundUser.address.map((c) => c._id);
+            Address.deleteMany({
+                _id: {
+                    $in: addressIds,
+                }
+            });
+            res.send("address of the user deleted successfully");
+        }
+    } catch (error) {
+        handleError(error);
+    }
+    process.on('unhandledRejection', error => {
+        console.log('unhandledRejection', error.message);
+    });
+};
+
+exports.forgotPassword = (req, res) => {
+    try {
+        let user = req.user;
+        if (user == null) {
+            res.status(403)
+                .send({
+                    message: "Invalid token"
+                });
+        }
+        else {
+            const pswdResetToken = jwt.sign(
+                { id: user["id"] },
+                process.env.TOKEN_KEY,
+                {
+                    expiresIn: "10m",
+                }
+            );
+            res.status(200).send({ pswdresettoken: pswdResetToken });
+        }
+    } catch (error) {
+        handleError(error);
+    }
+    process.on('unhandledRejection', error => {
+        console.log('unhandledRejection', error.message);
+    });
+};
+
+exports.resetPassword = async (req, res) => {
+    try {
+        let user = req.user;
+        if (user == null) {
+            res.status(403)
+                .send({
+                    message: "Invalid token"
+                });
+        }
+        else {
+            // console.log(req.body);
+            if (req.body.password == req.body.cnfpassword) {
+                let password = md5(req.body.password);
+                console.log(password);
+                await User.findByIdAndUpdate({ _id: user["id"] }, { password: password })
+                res.send("update password successfull")
+            } else {
+                res.send("please type password carefully")
+            }
+        }
+    } catch (error) {
+        handleError(error);
+    }
+    process.on('unhandledRejection', error => {
+        console.log('unhandledRejection', error.message);
+    });
+};
+
+exports.imgUpload = (req, res) => {
+    try {
+        let user = req.user;
+        if (user == null) {
+            res.status(403)
+                .send({
+                    message: "Invalid token"
+                });
+        }
+        else {
+
+        }
+    } catch (error) {
+        handleError(error);
+    }
+    process.on('unhandledRejection', error => {
+        console.log('unhandledRejection', error.message);
+    });
+
+};
+
+
+
+// exports.login = async (req, res) => {
+//     try {
+//         let username = req.body.username
+//         let password = md5(req.body.password)
+//         let foundUser = await User.findOne({ username: username })
+//         if (foundUser) {
+//             if (foundUser.password === password) {
+//                 // manually token created
+//                 // const tokenData = md5(new Date())
+//                 // const token = new Token({
+//                 //     user_id: foundUser._id,
+//                 //     access_token: tokenData,
+//                 // });
+//                 // token.save();
+//                 // JWT token
+//                 const token = jwt.sign(
+//                     { id: foundUser._id },
+//                     process.env.TOKEN_KEY,
+//                     {
+//                         expiresIn: 60000,
+//                     }
+//                 );
+//                 res.status(200).send({ jwttoken: token });
+//             } else {
+//                 res.status(500).send("User password incorrect.");
+//             }
+//         } else {
+//             res.status(500).send("User not regestered.");
+//         }
+//     } catch (error) {
+//         handleError(error);
+//     }
+//     process.on('unhandledRejection', error => {
+//         console.log('unhandledRejection', error.message);
+//     });
+// };

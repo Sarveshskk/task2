@@ -23,6 +23,9 @@ const verifyToken = (req, res,next) => {
       
 };
 module.exports = verifyToken;
+
+
+
 // manually token verify
 // const verifyToken = (req, res,next) => {
 //     let token_id = req.headers['token'];
