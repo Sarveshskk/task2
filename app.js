@@ -6,6 +6,7 @@ const session = require('express-session');
 const passport = require('passport');
 const strategy = require("./middleware/passport-auth");
 
+
 dbConnect();
 const app = express();
 app.use(express.static("public"));

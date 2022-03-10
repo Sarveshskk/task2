@@ -4,7 +4,7 @@ require("dotenv").config();
 
 
 const resetToken = (req, res,next) => {
-    let resetToken = req.headers['pswdresettoken'];
+    let resetToken = req.params['token'];
     if (resetToken == null){ 
         return res.sendStatus(401)
     }

@@ -1,7 +1,6 @@
 const express = require("express");
-const passport = require("passport")
 const verifyToken = require("../middleware/verifyToken");
-const resetToken = require("../middleware/resetToken");
+const multerUploads = require("../middleware/multer")
 
 let router = express.Router(),
     {
@@ -25,8 +24,7 @@ router.get("/list/:page",verifyToken, pagination);
 router.post("/address",verifyToken, address);
 router.delete("/address", verifyToken,deleteAddress);
 router.post("/forgot-password", verifyToken,forgotPassword);
-router.post("/verify-reset-password/:password-reset-token", resetToken,resetPassword);
-router.delete("/profile-image", verifyToken, imgUpload);
-
+router.post("/verifyResetPassword/:token",resetPassword);
+router.post("/profile-image", verifyToken,multerUploads.single("image"), imgUpload);
 
 module.exports = router;

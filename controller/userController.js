@@ -3,10 +3,9 @@ const router = express.Router();
 const User = require("../models/users");
 const md5 = require("md5");
 const jwt = require('jsonwebtoken');
-// const Token = require("../models/token");
 const Address = require("../models/address");
 const passport = require("passport");
-const LocalStrategy = require('passport-local');
+const sgMail = require('@sendgrid/mail');
 require("dotenv").config();
 
 exports.register = async (req, res) => {
@@ -35,8 +34,29 @@ exports.register = async (req, res) => {
                         }
                     );
                     res.status(200).send({ jwttoken: token });
+                    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+                    const msg = {
+                        to: 'sarvesh@excellencetechnologies.in',
+                        from: 'sarvesh@excellencetechnologies.in',
+                        subject: 'User Regestered',
+                        text: 'you are successfully regestered',
+                        html: '<strong>Congratulations!</strong>',
+                    };
+                    (async () => {
+                        try {
+                            await sgMail.send(msg);
+                        } catch (error) {
+                            console.error(error);
+
+                            if (error.response) {
+                                console.error(error.response.body)
+                            }
+                        }
+                    })();
                 }
             });
+        } else {
+            res.send("password and confirm password must be match");
         }
     }
     catch (error) {
@@ -47,15 +67,11 @@ exports.register = async (req, res) => {
     });
 };
 exports.login = (req, res) => {
-
     passport.authenticate('local', { failureRedirect: '/user/login' }),
         function (req, res) {
             res.redirect('/user/list/2');
         }
 }
-
-
-
 exports.deleteUser = async (req, res) => {
     try {
         let user = req.user;
@@ -106,7 +122,7 @@ exports.address = async (req, res) => {
         address.save();
         let user_id = user["id"];
         await User.findByIdAndUpdate(user_id, { $push: { address: address } })
-        res.send("user address updated")
+        res.send("user address updated");
     }
     catch (error) {
         handleError(error);
@@ -185,6 +201,26 @@ exports.forgotPassword = (req, res) => {
                     expiresIn: "10m",
                 }
             );
+            sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+            const msg = {
+                to: 'sarvesh@excellencetechnologies.in',
+                from: 'sarvesh@excellencetechnologies.in',
+                subject: 'Reset password',
+                text: 'please follow this link to reset password',
+                html: `'please follow this link to reset password---<strong>http://localhost:3000/user/verifyResetPassword/${pswdResetToken}</strong>`,
+                
+            };
+            (async () => {
+                try {
+                    await sgMail.send(msg);
+                } catch (error) {
+                    console.error(error);
+
+                    if (error.response) {
+                        console.error(error.response.body)
+                    }
+                }
+            })();
             res.status(200).send({ pswdresettoken: pswdResetToken });
         }
     } catch (error) {
@@ -197,23 +233,21 @@ exports.forgotPassword = (req, res) => {
 
 exports.resetPassword = async (req, res) => {
     try {
-        let user = req.user;
-        if (user == null) {
-            res.status(403)
-                .send({
-                    message: "Invalid token"
-                });
+        let resetToken = req.params['token'];
+        if (resetToken == null) {
+            return res.sendStatus(401)
         }
-        else {
-            // console.log(req.body);
-            if (req.body.password == req.body.cnfpassword) {
-                let password = md5(req.body.password);
-                console.log(password);
-                await User.findByIdAndUpdate({ _id: user["id"] }, { password: password })
-                res.send("update password successfull")
-            } else {
-                res.send("please type password carefully")
-            }
+        const user = jwt.verify(resetToken, process.env.TOKEN_KEY);
+        let userData = User.findOne({_id: user["id"]})
+        if(!userData){
+            res.status(500).send("invalid token")
+        }
+        if (req.body.password == req.body.cnfpassword) {
+            let password = md5(req.body.password);
+            await User.findByIdAndUpdate({ _id: user["id"] }, { password: password })
+            res.send("update password successfull")
+        } else {
+            res.send("please type password carefully")
         }
     } catch (error) {
         handleError(error);
@@ -233,7 +267,12 @@ exports.imgUpload = (req, res) => {
                 });
         }
         else {
-
+            if (!req.file) {
+                res.send({
+                    message: "image not upload"
+                })
+            }
+            res.send("image uploaded successfully")
         }
     } catch (error) {
         handleError(error);

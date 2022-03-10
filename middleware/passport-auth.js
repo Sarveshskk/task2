@@ -1,10 +1,11 @@
 const express = require("express")
 const passport = require("passport");
 const User = require("../models/users");
-const LocalStrategy = require('passport-local');
-const strategy = (req, res,next) => {
-      passport.use(new LocalStrategy( async (username, password, done)=> {
-            let user = await User.findOne({ username: username })
+const LocalStrategy = require('passport-local').Strategy;
+const strategy =  () => {
+      passport.use( new LocalStrategy( async (username, password, done)=> {
+        console.log("hello");
+            let user = await User.find({ username: username })
               if (!user) { 
                 return done(null, false);
                }
