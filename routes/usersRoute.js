@@ -1,6 +1,9 @@
 const express = require("express");
 const verifyToken = require("../middleware/verifyToken");
 const multerUploads = require("../middleware/multer")
+const { registerValidateRules, registerValidate } = require("../Validator/registerValidator");
+const {loginValidateRules,loginValidate} = require("../Validator/loginValidator");
+const {resetPasswordValidateRules,resetPasswordValidate} = require("../Validator/resetPasswordValidate");
 
 let router = express.Router(),
     {
@@ -9,22 +12,17 @@ let router = express.Router(),
         deleteUser,
         getData,
         pagination,
-        address,
-        deleteAddress,
         forgotPassword,
         resetPassword,
         imgUpload
     } = require("../controller/userController");
-
-router.post("/register", register);
-router.post("/login", login);
+router.post("/register",registerValidateRules(),registerValidate, register);
+router.post("/login",loginValidateRules(),loginValidate, login);
 router.get("/get/:id", verifyToken, getData);
 router.delete("/delete", verifyToken, deleteUser);
 router.get("/list/:page",verifyToken, pagination);
-router.post("/address",verifyToken, address);
-router.delete("/address", verifyToken,deleteAddress);
-router.post("/forgot-password", verifyToken,forgotPassword);
-router.post("/verifyResetPassword/:token",resetPassword);
+router.post("/forgot-password", forgotPassword);
+router.post("/verifyResetPassword/:token",resetPasswordValidateRules(),resetPasswordValidate,resetPassword);
 router.post("/profile-image", verifyToken,multerUploads.single("image"), imgUpload);
 
 module.exports = router;

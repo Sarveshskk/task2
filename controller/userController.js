@@ -8,6 +8,7 @@ const passport = require("passport");
 const sgMail = require('@sendgrid/mail');
 require("dotenv").config();
 
+
 exports.register = async (req, res) => {
     try {
         if (req.body.password == req.body.cnfpassword) {
@@ -108,29 +109,7 @@ exports.pagination = async (req, res) => {
         console.log('unhandledRejection', error.message);
     });
 };
-exports.address = async (req, res) => {
-    try {
-        let user = req.user;
-        const address = await new Address({
-            user_id: req.body.user_id,
-            address: req.body.address,
-            city: req.body.city,
-            state: req.body.state,
-            pin_code: req.body.pin_code,
-            phone_no: req.body.phone_no
-        })
-        address.save();
-        let user_id = user["id"];
-        await User.findByIdAndUpdate(user_id, { $push: { address: address } })
-        res.send("user address updated");
-    }
-    catch (error) {
-        handleError(error);
-    }
-    process.on('unhandledRejection', error => {
-        console.log('unhandledRejection', error.message)
-    });
-}
+
 
 exports.getData = async (req, res) => {
     try {
@@ -148,35 +127,6 @@ exports.getData = async (req, res) => {
         }
     }
     catch (error) {
-        handleError(error);
-    }
-    process.on('unhandledRejection', error => {
-        console.log('unhandledRejection', error.message);
-    });
-};
-
-exports.deleteAddress = async (req, res) => {
-    try {
-        let user = req.user;
-        // console.log(user);
-        if (user == null) {
-            res.status(403)
-                .send({
-                    message: "Invalid token"
-                });
-        }
-        else {
-            let foundUser = await User.findOne({ _id: user["id"] })
-            // console.log(foundUser.address);
-            let addressIds = foundUser.address.map((c) => c._id);
-            Address.deleteMany({
-                _id: {
-                    $in: addressIds,
-                }
-            });
-            res.send("address of the user deleted successfully");
-        }
-    } catch (error) {
         handleError(error);
     }
     process.on('unhandledRejection', error => {

@@ -2,9 +2,8 @@ const express = require("express")
 const passport = require("passport");
 const User = require("../models/users");
 const LocalStrategy = require('passport-local').Strategy;
-const strategy =  () => {
+const passportStrategy =  (passport) => {
       passport.use( new LocalStrategy( async (username, password, done)=> {
-        console.log("hello");
             let user = await User.find({ username: username })
               if (!user) { 
                 return done(null, false);
@@ -30,4 +29,4 @@ const strategy =  () => {
           }))
         })
 };
-module.exports = strategy;
+module.exports = passportStrategy;
